@@ -67,12 +67,12 @@ Deno.test({
   async fn(): Promise<void> {
     const rfcSecretString = "12345678901234567890";
     const hotp = new Hotp(rfcSecretString);
-    
+
     // Increments counter if the internal counter is used
     assertEquals(hotp.counter, 0);
     await hotp.generate();
     assertEquals(hotp.counter, 1);
-    
+
     // Does not increment when a moving factor is provided
     await hotp.generate(0);
     assertEquals(hotp.counter, 1);
@@ -85,12 +85,12 @@ Deno.test({
     const rfcCodeAt0 = 755224;
     const rfcSecretString = "12345678901234567890";
     const hotp = new Hotp(rfcSecretString);
-    
+
     // Increments counter if the internal counter is used
     assertEquals(hotp.counter, 0);
     await hotp.validate(rfcCodeAt0);
     assertEquals(hotp.counter, 1);
-    
+
     // Does not increment the counter when a moving factor is provided
     await hotp.validate(rfcCodeAt0, 0);
     assertEquals(hotp.counter, 1);

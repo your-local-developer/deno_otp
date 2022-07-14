@@ -11,7 +11,7 @@ type OtpOptions = {
 
 abstract class Otp {
   #secret: Uint8Array;
-  
+
   #digits: number;
   public get digits(): number {
     return this.#digits;
