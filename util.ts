@@ -104,3 +104,20 @@ export function extractCodeFromHmacShaDigest(
   const shortCode = fullCode % Math.pow(10, digits);
   return shortCode;
 }
+
+/**
+ * Adds padding and removes whitespace from the given Base32 secret to prepare it for decoding.
+ * @param secret
+ */
+export function trimWhitespaceAndAddBase32Padding(secret: string): string {
+  secret = secret.replaceAll(" ", "");
+  // Base32 has to be a multiple of 8
+  let amountOfMissingPadding = 8 - (secret.length % 8);
+  // Returns 8 if no missing padding is required, because it's 8 to the next multiple of 8
+  amountOfMissingPadding = amountOfMissingPadding === 8
+    ? 0
+    : amountOfMissingPadding;
+  // `=` is used for Base32 padding
+  secret = secret.padEnd(secret.length + amountOfMissingPadding, "=");
+  return secret;
+}
