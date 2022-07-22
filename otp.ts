@@ -3,6 +3,7 @@ import {
   calculateHmacDigest,
   codeToNumber,
   extractCodeFromHmacShaDigest,
+  trimWhitespaceAndAddBase32Padding,
 } from "./util.ts";
 
 export enum OtpAlgorithm {
@@ -45,8 +46,7 @@ export abstract class Otp {
     options?: OtpOptions,
   ) {
     if (typeof secret === "string") {
-      // TODO: Append possible missing padding and remove whitespace
-      secret = decode(secret);
+      secret = decode(trimWhitespaceAndAddBase32Padding(secret));
     }
     this.#secret = secret;
     if (options?.digits) this.#digits = options.digits;
