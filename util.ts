@@ -1,5 +1,4 @@
 import { OtpAlgorithm } from "./otp.ts";
-import { Buffer } from "./deps.ts";
 
 /**
  * Converts a 64 bit number to a Uint8Array representing its bytes.
@@ -40,7 +39,8 @@ export function numberToBytes(
  * @param bytes Bytes to convert
  */
 export function bytesToUInt32BE(bytes: Uint8Array): number {
-  return Buffer.from(bytes).readUInt32BE(0);
+  // TODO: Maybe add useLastBytes?
+  return new DataView(bytes.buffer).getUint32(0);
 }
 
 /**

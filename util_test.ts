@@ -27,9 +27,17 @@ Deno.test({
   name: "Converts a Uint8Array to a uint32",
   fn(): void {
     const uint32MaxValue = 4294967295;
-    // Ignores arrays which contain more than 32 bit
+    // Ignores last bytes of array which contain more than 32 bit
     assertEquals(
       bytesToUInt32BE(new Uint8Array([255, 255, 255, 255, 255, 255, 255, 255])),
+      uint32MaxValue,
+    );
+    assertEquals(
+      bytesToUInt32BE(new Uint8Array([127, 127, 127, 127, 255, 255, 255, 255])),
+      2139062143,
+    );
+    assertEquals(
+      bytesToUInt32BE(new Uint8Array([255, 255, 255, 255, 127, 127, 127, 127])),
       uint32MaxValue,
     );
     assertEquals(
