@@ -14,11 +14,11 @@ export function numberToBytes(
 ): Uint8Array {
   // Fill the Array with bytes
   const preparedArray = new Array<number>();
-  while (value !== 0) {
+  do {
     const currentBytes = value & 0xff;
     preparedArray.unshift(currentBytes);
     value = (value - currentBytes) / 256;
-  }
+  } while (value !== 0);
   // If byteArrayLen is false, use the needed length
   byteArrayLen = byteArrayLen === false ? preparedArray.length : byteArrayLen;
   // Prepare a Uint8Array for being filled. The "WebCrypto API seems to need an array with 8 bytes.
