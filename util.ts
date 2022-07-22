@@ -1,23 +1,34 @@
+import { OtpAlgorithm } from "./otp.ts";
 import { Buffer } from "./deps.ts";
 
 /**
- * Converts a 64 Bit number to a Uint8Array representing its bytes.
+ * Converts a 64 bit number to a Uint8Array representing its bytes.
  *
- * @param value the number to convert
- * @param byteArrayLen length of the array
- * @returns the byte representation
- * @throws an error if the value exceeds 64 bit
+ * @param value Number to convert
+ * @param byteArrayLen Length of the Uint8Array or false if the Uint8Array should only be of minimal length.
+ * @throws Errors if the value exceeds 64 bit
  */
-export function numberToBytes(value: number, byteArrayLen = 8): Uint8Array {
+export function numberToBytes(
+  value: number,
+  byteArrayLen: number | false = 8,
+): Uint8Array {
+  // Fill the Array with bytes
   const preparedArray = new Array<number>();
   while (value !== 0) {
-    const bytesAtIndex = value & 0xff;
-    preparedArray.unshift(bytesAtIndex);
-    value = (value - bytesAtIndex) / 256;
+    const currentBytes = value & 0xff;
+    preparedArray.unshift(currentBytes);
+    value = (value - currentBytes) / 256;
   }
+  // If byteArrayLen is false, use the needed length
+  byteArrayLen = byteArrayLen === false ? preparedArray.length : byteArrayLen;
+  // Prepare a Uint8Array for being filled. The "WebCrypto API seems to need an array with 8 bytes.
   const byteArr = new Uint8Array(byteArrayLen);
   const fillOffset = byteArrayLen - preparedArray.length;
-  if (fillOffset < 0) throw Error("The provided value is bigger than 64 Bit");
+  if (fillOffset < 0) {
+    throw Error(
+      `The amount of bytes (${preparedArray.length}) of the provided value exceeds the limit of the arraylength (${byteArrayLen}) you provided!`,
+    );
+  }
   byteArr.set(preparedArray, fillOffset);
 
   return byteArr;
@@ -26,10 +37,70 @@ export function numberToBytes(value: number, byteArrayLen = 8): Uint8Array {
 /**
  * Converts bytes to a unsigned 32 bit integer.
  *
- * @param bytes the bytes to convert
- * @returns a 32 Uint representation of the given bytes
+ * @param bytes Bytes to convert
  */
 export function bytesToUInt32BE(bytes: Uint8Array): number {
-  const buffer = Buffer.from(bytes);
-  return buffer.readUInt32BE(0);
+  return Buffer.from(bytes).readUInt32BE(0);
+}
+
+/**
+ * Converts a code as string to a number while trimming it's whitespace.
+ *
+ * @param code Code to convert
+ */
+export function codeToNumber(code: string | number): number {
+  if (typeof code === "number") return code;
+  const unifiedCode = code.replaceAll(" ", "");
+  return parseInt(unifiedCode);
+}
+
+/**
+ * Calculates the HMAC digest based on the moving factor.
+ *
+ * @param movingFactor Moving factor to sign
+ * @param secret Secret which is used as key
+ * @param algorithm Algorithm used for signing
+ * @throws Errors if the movingFactor exceeds 64 bit
+ */
+export async function calculateHmacDigest(
+  movingFactor: number,
+  secret: Uint8Array,
+  algorithm: OtpAlgorithm,
+): Promise<Uint8Array> {
+  const hmacKey = await crypto.subtle.importKey(
+    "raw",
+    secret,
+    { name: "HMAC", hash: algorithm },
+    false,
+    ["sign"],
+  );
+  const bytesToSign = numberToBytes(movingFactor);
+  const signedDigest = new Uint8Array(
+    await crypto.subtle.sign("HMAC", hmacKey, bytesToSign),
+  );
+  return signedDigest;
+}
+
+/**
+ * Extracts an n-digit integer from the given HMAC-SHA digest using it's last byte as offset and the provided digits to limit it length.
+ *
+ * @param digest The digest to extract from
+ * @param digits The maximum amount of digits the result can have
+ * @throws Errors if the last digit of the Uint8Array is undefined
+ */
+export function extractCodeFromHmacShaDigest(
+  digest: Uint8Array,
+  digits: number,
+): number {
+  let dynamicOffset = digest.at(digest.length - 1);
+  if (dynamicOffset === undefined) throw new Error("Digest not valid!");
+  // Limit the offset from 0 to 15 because SHA-1 produces a 20 byte digest
+  dynamicOffset &= 0xf;
+  // Get 32 bit from the digest
+  const codeBytes = digest.slice(dynamicOffset, dynamicOffset + 4);
+  const digestAsInt = bytesToUInt32BE(codeBytes);
+  // Shorten the code to 32 bit
+  const fullCode = digestAsInt & 0x7fffffff;
+  const shortCode = fullCode % Math.pow(10, digits);
+  return shortCode;
 }

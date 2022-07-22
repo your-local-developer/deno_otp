@@ -1,44 +1,33 @@
-import { decode } from "./deps.ts";
-import { Otp } from "./otp.ts";
+import { Otp, OtpAlgorithm } from "./otp.ts";
 import type { OtpOptions } from "./otp.ts";
 
-type HotpOptions = OtpOptions & {
+export interface HotpOptions {
   counter?: number;
-};
+}
 
-class Hotp extends Otp {
-  #counter: number;
+export class Hotp extends Otp {
+  #counter = 0;
 
   public get counter(): number {
     return this.#counter;
   }
 
-  constructor(secret: Uint8Array | string, options?: HotpOptions) {
-    const defaultCounter = 0;
-    const defaultOptions: HotpOptions = {
-      counter: defaultCounter,
-      algorithm: "SHA-1",
+  constructor(secret: Uint8Array | string, options?: HotpOptions & OtpOptions) {
+    const defaultOptions: OtpOptions = {
+      algorithm: OtpAlgorithm.SHA1,
       digits: 6,
       validationWindow: 30,
     };
-    const normalizedOptions = {
+    const normalizedOptions: OtpOptions = {
       ...defaultOptions,
       ...options,
     };
-    super(secret, normalizedOptions as OtpOptions);
-    this.#counter = normalizedOptions.counter ?? defaultCounter;
-  }
-
-  static fromBase32Secret(base32Secret: string, options?: HotpOptions): Hotp {
-    return new Hotp(decode(base32Secret), options);
-  }
-
-  validateSecret(secret: string, ignoreLenth: boolean): boolean {
-    throw new Error("Method not implemented.");
+    super(secret, normalizedOptions);
+    if (options?.counter) this.#counter = options.counter;
   }
 
   async generate(movingFactor?: number | undefined): Promise<number> {
-    const generatedCode = await this._generateCode(
+    const generatedCode = await this.generateCodeNoSideEffects(
       movingFactor ?? this.#counter,
     );
     if (movingFactor === undefined) this.#counter++;
@@ -49,17 +38,11 @@ class Hotp extends Otp {
     code: string | number,
     movingFactor?: number | undefined,
   ): Promise<boolean> {
-    const codeIsValid = await this._validateCode(
+    const codeIsValid = await this.validateCodeNoSideEffects(
       code,
       movingFactor ?? this.#counter,
     );
     if (movingFactor === undefined && codeIsValid) this.#counter++;
     return codeIsValid;
   }
-
-  formatCode(code: number): string {
-    throw new Error("Method not implemented.");
-  }
 }
-
-export { Hotp };

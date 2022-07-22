@@ -1,100 +1,96 @@
-import { crypto } from "./deps.ts";
-import { bytesToUInt32BE, numberToBytes } from "./util.ts";
+import { decode } from "./deps.ts";
+import {
+  calculateHmacDigest,
+  codeToNumber,
+  extractCodeFromHmacShaDigest,
+} from "./util.ts";
 
-type OtpAlgorithms = "SHA-1" | "SHA-256" | "SHA-512";
+export enum OtpAlgorithm {
+  SHA1 = "SHA-1",
+  SHA256 = "SHA-256",
+  SHA512 = "SHA-512",
+}
 
-type OtpOptions = {
+export interface OtpOptions {
   digits?: number;
   validationWindow?: number;
-  algorithm?: OtpAlgorithms;
-};
+  algorithm?: OtpAlgorithm;
+}
 
-abstract class Otp {
+export abstract class Otp {
   #secret: Uint8Array;
 
-  #digits: number;
+  #digits = 6;
   public get digits(): number {
     return this.#digits;
   }
 
-  #validationWindow: number;
+  #validationWindow = 0;
   public get validationWindow(): number {
     return this.#validationWindow;
   }
 
-  #algorithm: OtpAlgorithms;
-  public get algorithm(): OtpAlgorithms {
+  #algorithm = OtpAlgorithm.SHA1;
+  public get algorithm(): OtpAlgorithm {
     return this.#algorithm;
   }
 
+  // TODO: Add comment
+  /**
+   * @param secret Secret in unencoded Uint8Array or Base32 encoded string representation.
+   * @param options
+   */
   constructor(
     secret: Uint8Array | string,
     options?: OtpOptions,
   ) {
     if (typeof secret === "string") {
-      secret = new TextEncoder().encode(secret);
+      // TODO: Append possible missing padding and remove whitespace
+      secret = decode(secret);
     }
     this.#secret = secret;
-    this.#digits = options?.digits ?? 6;
-    this.#validationWindow = options?.validationWindow ?? 0;
-    this.#algorithm = options?.algorithm ?? "SHA-1";
+    if (options?.digits) this.#digits = options.digits;
+    if (options?.validationWindow) {
+      this.#validationWindow = options.validationWindow;
+    }
+    if (options?.algorithm) this.#algorithm = options?.algorithm;
   }
 
-  abstract validateSecret(secret: string, ignoreLenth: boolean): boolean;
+  static validateSecret(secret: string, ignoreLength: boolean): boolean {
+    // TODO: Implement method, use byteLength
+    throw new Error("Method not implemented.");
+  }
+
   abstract generate(movingFactor?: number): Promise<number>;
+
+  async generateCodeNoSideEffects(movingFactor: number): Promise<number> {
+    const digest = await calculateHmacDigest(
+      movingFactor,
+      this.#secret,
+      this.#algorithm,
+    );
+    return extractCodeFromHmacShaDigest(
+      digest,
+      this.#digits,
+    );
+  }
+
   abstract validate(
     code: number | string,
     movingFactor?: number,
   ): Promise<boolean>;
-  abstract formatCode(code: number): string;
 
-  async #calculateHmacDigest(
-    movingFactor: number,
-  ): Promise<Uint8Array> {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      this.#secret,
-      { name: "HMAC", hash: this.#algorithm },
-      false,
-      ["sign"],
-    );
-    const bytesToSign = numberToBytes(movingFactor);
-    const signed = new Uint8Array(
-      await crypto.subtle.sign("HMAC", key, bytesToSign),
-    );
-    return signed;
-  }
-
-  #shortenCode(digest: Uint8Array): number {
-    let dynamicOffset = digest.at(digest.length - 1);
-    if (!dynamicOffset) throw new Error("Digest not valid!");
-    dynamicOffset &= 0xf;
-    const codeBytes = digest.slice(dynamicOffset, dynamicOffset + 4);
-    const code = bytesToUInt32BE(codeBytes);
-    const fullCode = code & 0x7fffffff;
-    const shortCode = fullCode % Math.pow(10, this.#digits);
-    return shortCode;
-  }
-
-  protected async _generateCode(movingFactor: number): Promise<number> {
-    return this.#shortenCode(
-      await this.#calculateHmacDigest(movingFactor),
-    );
-  }
-
-  protected async _validateCode(
-    code: string | number,
+  async validateCodeNoSideEffects(
+    code: number | string,
     movingFactor: number,
   ): Promise<boolean> {
-    return this.#codeToNumber(code) === await this._generateCode(movingFactor);
+    return codeToNumber(code) === await this.generateCodeNoSideEffects(
+      movingFactor,
+    );
   }
 
-  #codeToNumber(code: string | number): number {
-    if (typeof code === "number") return code;
-    const unifiedCode = code.replaceAll(" ", "");
-    return parseInt(unifiedCode);
+  static formatCode(code: number): string {
+    // TODO: Implement method
+    throw new Error("Method not implemented.");
   }
 }
-
-export { Otp };
-export type { OtpAlgorithms, OtpOptions };

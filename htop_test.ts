@@ -29,7 +29,11 @@ Deno.test({
       ]),
     );
     assertEquals(await hotp.generate(0), 755224);
-    assertEquals(await (new Hotp("12345678901234567890")).generate(0), 755224);
+    assertEquals(
+      await (new Hotp((new TextEncoder()).encode("12345678901234567890")))
+        .generate(0),
+      755224,
+    );
   },
 });
 
@@ -53,9 +57,14 @@ Deno.test({
 
     for (let index = 0; index < rfcCodes.length; index++) {
       const code = rfcCodes[index];
-      assertEquals(await (new Hotp(rfcSecretString)).generate(index), code);
       assertEquals(
-        await (Hotp.fromBase32Secret(rfcSecretBase32)).generate(index),
+        await (new Hotp((new TextEncoder()).encode(rfcSecretString))).generate(
+          index,
+        ),
+        code,
+      );
+      assertEquals(
+        await (new Hotp(rfcSecretBase32)).generate(index),
         code,
       );
     }
@@ -66,7 +75,7 @@ Deno.test({
   name: "generate() increments the counter",
   async fn(): Promise<void> {
     const rfcSecretString = "12345678901234567890";
-    const hotp = new Hotp(rfcSecretString);
+    const hotp = new Hotp((new TextEncoder()).encode(rfcSecretString));
 
     // Increments counter if the internal counter is used
     assertEquals(hotp.counter, 0);
@@ -84,7 +93,7 @@ Deno.test({
   async fn(): Promise<void> {
     const rfcCodeAt0 = 755224;
     const rfcSecretString = "12345678901234567890";
-    const hotp = new Hotp(rfcSecretString);
+    const hotp = new Hotp((new TextEncoder()).encode(rfcSecretString));
 
     // Increments counter if the internal counter is used
     assertEquals(hotp.counter, 0);
