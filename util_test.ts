@@ -57,10 +57,10 @@ Deno.test({
 });
 
 Deno.test({
-  name: "Secret is modified to fir Base32 requirements",
+  name: "Secret is modified to fit Base32 requirements",
   fn(): void {
     const falselyEncodedSecret =
-      "GEZ DGN BVG Y3T QOJ QGE ZDG NBV GY3 TQO JQG EZDG";
+      "GEZ DGN bvg Y3T QOJ QGE ZDG NBV GY3 TQO JQG EZDG";
     const treatedSecret = trimWhitespaceAndAddBase32Padding(
       falselyEncodedSecret,
     );
@@ -73,6 +73,21 @@ Deno.test({
     assertEquals(
       trimWhitespaceAndAddBase32Padding(correctlyEncodedSecret),
       correctlyEncodedSecret,
+    );
+  },
+});
+
+Deno.test({
+  name: "Padded secrets do not get extra padding",
+  fn(): void {
+    const falselyEncodedSecret =
+      "GEZ DGN bvg Y3T QOJ QGE ZDG NBV GY3 TQO JQG EZDG ===";
+    const treatedSecret = trimWhitespaceAndAddBase32Padding(
+      falselyEncodedSecret,
+    );
+    assertEquals(
+      treatedSecret,
+      "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDG===",
     );
   },
 });

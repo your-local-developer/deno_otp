@@ -106,11 +106,12 @@ export function extractCodeFromHmacShaDigest(
 }
 
 /**
- * Adds padding and removes whitespace from the given Base32 secret to prepare it for decoding.
+ * Adds padding and removes whitespace from the given Base32 secret and turns its characters to uppercase to prepare it for decoding.
  * @param secret
  */
 export function trimWhitespaceAndAddBase32Padding(secret: string): string {
   secret = secret.replaceAll(" ", "");
+  secret = secret.toUpperCase();
   // Base32 has to be a multiple of 8
   let amountOfMissingPadding = 8 - (secret.length % 8);
   // Returns 8 if no missing padding is required, because it's 8 to the next multiple of 8
