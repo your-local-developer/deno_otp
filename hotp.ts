@@ -7,7 +7,6 @@ export interface HotpOptions {
 
 export class Hotp extends Otp {
   #counter = 0;
-
   public get counter(): number {
     return this.#counter;
   }
@@ -23,7 +22,7 @@ export class Hotp extends Otp {
       ...options,
     };
     super(secret, normalizedOptions);
-    if (options?.counter) this.#counter = options.counter;
+    if (options?.counter !== undefined) this.#counter = options.counter;
   }
 
   /**

@@ -48,11 +48,11 @@ export abstract class Otp {
       secret = decode(trimWhitespaceAndAddBase32Padding(secret));
     }
     this.#secret = secret;
-    if (options?.digits) this.#digits = options.digits;
-    if (options?.validationWindow) {
+    if (options?.digits !== undefined) this.#digits = options.digits;
+    if (options?.validationWindow !== undefined) {
       this.#validationWindow = options.validationWindow;
     }
-    if (options?.algorithm) this.#algorithm = options?.algorithm;
+    if (options?.algorithm !== undefined) this.#algorithm = options?.algorithm;
   }
 
   /**
