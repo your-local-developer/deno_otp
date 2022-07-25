@@ -1,4 +1,4 @@
-import { decode } from "./deps.ts";
+import { byteLength, decode } from "./deps.ts";
 import {
   calculateHmacDigest,
   codeToNumber,
@@ -36,10 +36,9 @@ export abstract class Otp {
     return this.#algorithm;
   }
 
-  // TODO: Add comment
   /**
    * @param secret Secret in unencoded Uint8Array or Base32 encoded string representation.
-   * @param options
+   * @param options Options to configure the number of digits, the size of the validation window and the algorithm.
    */
   constructor(
     secret: Uint8Array | string,
@@ -56,9 +55,74 @@ export abstract class Otp {
     if (options?.algorithm) this.#algorithm = options?.algorithm;
   }
 
-  static validateSecret(secret: string, ignoreLength: boolean): boolean {
-    // TODO: Implement method, use byteLength
-    throw new Error("Method not implemented.");
+  /**
+   * Validates the Base32 encoded secret for it's characters set and possibly checks it length for the length requirement.
+   * Regarding to the RFC HOTP and therefore TOTP require a secret with at least 16 bytes of length.
+   * Google Authenticator ignored this requirement in the past and therefore a number of services generate secrets which are shorter than 16 bytes.
+   * Therefore, the default behavior is to ignore the length.
+   *
+   * @param secret
+   * @param ignoreLength
+   */
+  static validateSecret(secret: string, ignoreLength = true): boolean {
+    let validated = false;
+    try {
+      const paddedSecret = trimWhitespaceAndAddBase32Padding(secret);
+      if (decode(paddedSecret).length !== 0) {
+        // Check for Base32 alphabet to exclude the "Extended Hex" Base 32 Alphabet (https://www.rfc-editor.org/rfc/rfc4648#section-7)
+        let includesBadChar = false;
+        for (const char of paddedSecret) {
+          // TODO: Think of a cleaner way to do this
+          switch (char) {
+            case "A":
+            case "B":
+            case "C":
+            case "D":
+            case "E":
+            case "F":
+            case "G":
+            case "H":
+            case "I":
+            case "J":
+            case "K":
+            case "L":
+            case "M":
+            case "N":
+            case "O":
+            case "P":
+            case "Q":
+            case "R":
+            case "S":
+            case "T":
+            case "U":
+            case "V":
+            case "W":
+            case "X":
+            case "Y":
+            case "Z":
+            case "2":
+            case "3":
+            case "4":
+            case "5":
+            case "6":
+            case "7":
+            case "=":
+              break;
+            default:
+              includesBadChar = true;
+              break;
+          }
+        }
+        validated = !includesBadChar;
+        // Deal with secrets which are too short if secret is okay.
+        if (validated && !ignoreLength) {
+          const len = byteLength(paddedSecret);
+          validated = (len >= 16) ? true : false;
+        }
+      }
+      // deno-lint-ignore no-empty
+    } catch (_) {}
+    return validated;
   }
 
   abstract generate(movingFactor?: number): Promise<number>;
