@@ -1,5 +1,5 @@
 import { Otp } from "./otp.ts";
-import { assert, assertFalse } from "./test_deps.ts";
+import { assert, assertEquals, assertFalse } from "./test_deps.ts";
 
 const goodButShortBase32Secret = "JBQWY3DPEBLWK3DU"; // 80 bit
 const goodAndLongBase32SecretNoPadding = "GEZDGNBVGY3TQMJSGM2DKNRXHA"; // 128 bit
@@ -53,5 +53,15 @@ Deno.test({
         false,
       ),
     );
+  },
+});
+
+Deno.test({
+  name:
+    "Otp.formatCode adds spaces and does not append whitespace to the end and start",
+  fn() {
+    assertEquals(Otp.formatCode(123456, 6), "123 456");
+    assertEquals(Otp.formatCode(12345, 6), "012 345");
+    assertEquals(Otp.formatCode(1234567, 7), "1234 567");
   },
 });

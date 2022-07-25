@@ -125,8 +125,10 @@ export abstract class Otp {
     return validated;
   }
 
+  // TODO: Change return type to Promise<string> and make it formatted
   abstract generate(movingFactor?: number): Promise<number>;
 
+  // TODO: Change return type to Promise<string> and make it formatted
   async generateCodeNoSideEffects(movingFactor: number): Promise<number> {
     const digest = await calculateHmacDigest(
       movingFactor,
@@ -153,8 +155,27 @@ export abstract class Otp {
     );
   }
 
-  static formatCode(code: number): string {
-    // TODO: Implement method
-    throw new Error("Method not implemented.");
+  /**
+   * Groups the digits of the code in groups of three if the amount of digits is dividable by three and groups of four if not.
+   * @param code
+   * @param digits
+   * @throws Errors if the code has more digits than the amount of digits provided
+   */
+  static formatCode(code: number, digits: number): string {
+    const formattedCharArray = [...code.toString()];
+    if (digits < formattedCharArray.length) {
+      throw new RangeError(
+        "The provided code is longer than the amount of digits provided.",
+      );
+    }
+    const zeroFilledArray = [
+      ..."0".repeat(digits - formattedCharArray.length),
+      ...formattedCharArray,
+    ];
+    const grouping = zeroFilledArray.length % 3 === 0 ? 3 : 4;
+    // skip index 0 and last char
+    return zeroFilledArray.map((v, i, a) =>
+      v = (i !== (a.length - 1) && (i + 1) % grouping === 0) ? `${v} ` : v
+    ).join("");
   }
 }
