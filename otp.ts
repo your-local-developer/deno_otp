@@ -1,7 +1,7 @@
 import { byteLength, decode } from "./deps.ts";
 import {
   calculateHmacDigest,
-  codeToNumber,
+  cleanUserInputFormat,
   extractCodeFromHmacShaDigest,
   trimWhitespaceAndAddBase32Padding,
 } from "./util.ts";
@@ -125,51 +125,66 @@ export abstract class Otp {
     return validated;
   }
 
-  // TODO: Change return type to Promise<string> and make it formatted
-  abstract generate(movingFactor?: number): Promise<number>;
+  /**
+   * Generates the formatted otp code and possibly causes side effects like incrementing a internal counter.
+   * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
+   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
+   * @param movingFactor
+   */
+  abstract generate(movingFactor?: number): Promise<string>;
 
-  // TODO: Change return type to Promise<string> and make it formatted
-  async generateCodeNoSideEffects(movingFactor: number): Promise<number> {
+  /**
+   * Generates the formatted otp code.
+   * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
+   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
+   * @param movingFactor
+   */
+  async generateCodeNoSideEffects(movingFactor: number): Promise<string> {
     const digest = await calculateHmacDigest(
       movingFactor,
       this.#secret,
       this.#algorithm,
     );
-    return extractCodeFromHmacShaDigest(
-      digest,
+    return Otp.formatCode(
+      extractCodeFromHmacShaDigest(
+        digest,
+        this.#digits,
+      ),
       this.#digits,
     );
   }
 
+  /**
+   * Validates the formatted otp code, ignoring spaces and possibly causes side effects like incrementing a internal counter.
+   * @param movingFactor
+   */
   abstract validate(
-    code: number | string,
+    code: string,
     movingFactor?: number,
   ): Promise<boolean>;
 
+  /**
+   * Validates the formatted otp code, ignoring spaces.
+   * @param movingFactor
+   */
   async validateCodeNoSideEffects(
-    code: number | string,
+    code: string,
     movingFactor: number,
   ): Promise<boolean> {
-    return codeToNumber(code) === await this.generateCodeNoSideEffects(
-      movingFactor,
-    );
+    return cleanUserInputFormat(code) ===
+      cleanUserInputFormat(await this.generateCodeNoSideEffects(movingFactor));
   }
 
   /**
    * Groups the digits of the code in groups of three if the amount of digits is dividable by three and groups of four if not.
    * @param code
    * @param digits
-   * @throws Errors if the code has more digits than the amount of digits provided
    */
   static formatCode(code: number, digits: number): string {
     const formattedCharArray = [...code.toString()];
-    if (digits < formattedCharArray.length) {
-      throw new RangeError(
-        "The provided code is longer than the amount of digits provided.",
-      );
-    }
+    const delta = digits - formattedCharArray.length;
     const zeroFilledArray = [
-      ..."0".repeat(digits - formattedCharArray.length),
+      ..."0".repeat(delta >= 0 ? delta : 0),
       ...formattedCharArray,
     ];
     const grouping = zeroFilledArray.length % 3 === 0 ? 3 : 4;

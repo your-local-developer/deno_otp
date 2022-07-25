@@ -50,7 +50,7 @@ export function bytesToUInt32BE(bytes: Uint8Array): number {
  */
 export function codeToNumber(code: string | number): number {
   if (typeof code === "number") return code;
-  const unifiedCode = code.replaceAll(" ", "");
+  const unifiedCode = cleanUserInputFormat(code);
   return parseInt(unifiedCode);
 }
 
@@ -110,8 +110,7 @@ export function extractCodeFromHmacShaDigest(
  * @param secret
  */
 export function trimWhitespaceAndAddBase32Padding(secret: string): string {
-  secret = secret.replaceAll(" ", "");
-  secret = secret.toUpperCase();
+  secret = cleanUserInputFormat(secret);
   // Base32 has to be a multiple of 8
   let amountOfMissingPadding = 8 - (secret.length % 8);
   // Returns 8 if no missing padding is required, because it's 8 to the next multiple of 8
@@ -121,4 +120,12 @@ export function trimWhitespaceAndAddBase32Padding(secret: string): string {
   // `=` is used for Base32 padding
   secret = secret.padEnd(secret.length + amountOfMissingPadding, "=");
   return secret;
+}
+
+/**
+ * Removes whitespace and turns characters to uppercase
+ * @param input
+ */
+export function cleanUserInputFormat(input: string): string {
+  return input.replaceAll(" ", "").toUpperCase();
 }

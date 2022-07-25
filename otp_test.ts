@@ -63,5 +63,7 @@ Deno.test({
     assertEquals(Otp.formatCode(123456, 6), "123 456");
     assertEquals(Otp.formatCode(12345, 6), "012 345");
     assertEquals(Otp.formatCode(1234567, 7), "1234 567");
+    // Ignores digit requirement if the code is longer
+    assertEquals(Otp.formatCode(1234567, 6), "1234 567");
   },
 });

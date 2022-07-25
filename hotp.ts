@@ -26,7 +26,13 @@ export class Hotp extends Otp {
     if (options?.counter) this.#counter = options.counter;
   }
 
-  async generate(movingFactor?: number | undefined): Promise<number> {
+  /**
+   * Generates the formatted Otp code and increments the internal counter.
+   * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
+   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
+   * @param movingFactor
+   */
+  async generate(movingFactor?: number | undefined): Promise<string> {
     const generatedCode = await this.generateCodeNoSideEffects(
       movingFactor ?? this.#counter,
     );
@@ -34,8 +40,13 @@ export class Hotp extends Otp {
     return generatedCode;
   }
 
+  /**
+   * Validates the formatted otp code, ignoring spaces and increments the internal counter.
+   * @param code
+   * @param movingFactor
+   */
   async validate(
-    code: string | number,
+    code: string,
     movingFactor?: number | undefined,
   ): Promise<boolean> {
     const codeIsValid = await this.validateCodeNoSideEffects(

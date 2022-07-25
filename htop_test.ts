@@ -28,11 +28,11 @@ Deno.test({
         48,
       ]),
     );
-    assertEquals(await hotp.generate(0), 755224);
+    assertEquals(await hotp.generate(0), "755 224");
     assertEquals(
       await (new Hotp((new TextEncoder()).encode("12345678901234567890")))
         .generate(0),
-      755224,
+      "755 224",
     );
   },
 });
@@ -41,16 +41,16 @@ Deno.test({
   name: "generate() is RFC compliant",
   async fn(): Promise<void> {
     const rfcCodes = [
-      755224,
-      287082,
-      359152,
-      969429,
-      338314,
-      254676,
-      287922,
-      162583,
-      399871,
-      520489,
+      "755 224",
+      "287 082",
+      "359 152",
+      "969 429",
+      "338 314",
+      "254 676",
+      "287 922",
+      "162 583",
+      "399 871",
+      "520 489",
     ];
     const rfcSecretString = "12345678901234567890";
     const rfcSecretBase32 = encode(new TextEncoder().encode(rfcSecretString));
@@ -91,7 +91,7 @@ Deno.test({
 Deno.test({
   name: "validate() increments the counter",
   async fn(): Promise<void> {
-    const rfcCodeAt0 = 755224;
+    const rfcCodeAt0 = "755 224";
     const rfcSecretString = "12345678901234567890";
     const hotp = new Hotp((new TextEncoder()).encode(rfcSecretString));
 
