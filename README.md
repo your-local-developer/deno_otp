@@ -1,8 +1,10 @@
 # Deno Otp
 
-A RFC compliant [HOTP](https://www.rfc-editor.org/rfc/rfc4226) and [TOTP](https://www.rfc-editor.org/rfc/rfc6238) (not yet implemented) implementation
-which can be used on the server and client. It is easily extendable, provides a
-few quality-of-live features and follows the [Deno standard library style guide](https://deno.land/manual/contributing/style_guide).
+A RFC compliant [HOTP](https://www.rfc-editor.org/rfc/rfc4226) and
+[TOTP](https://www.rfc-editor.org/rfc/rfc6238) (not yet implemented)
+implementation which can be used on the server and client. It is easily
+extendable, provides a few quality-of-live features and follows the
+[Deno standard library style guide](https://deno.land/manual/contributing/style_guide).
 
 ## Current state
 
