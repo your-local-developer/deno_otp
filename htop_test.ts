@@ -1,5 +1,6 @@
-import { assertEquals, encode } from "./test_deps.ts";
+import { assertEquals } from "./test_deps.ts";
 import { Hotp } from "./hotp.ts";
+import { encode } from "./deps.ts";
 
 Deno.test({
   name: "Can be constructed with Uint8Array and string",
