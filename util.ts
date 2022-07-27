@@ -67,7 +67,7 @@ export function codeToNumber(code: string | number): number {
 export async function calculateHmacDigest(
   movingFactor: number,
   secret: Uint8Array,
-  algorithm: OtpAlgorithm,
+  algorithm: OtpAlgorithm | AlgorithmIdentifier,
 ): Promise<Uint8Array> {
   const hmacKey = await crypto.subtle.importKey(
     "raw",
@@ -135,7 +135,7 @@ export function cleanUserInputFormat(input: string): string {
 
 /**
  * Check the string to only be Base32 alphabet not the "Extended Hex" Base 32 Alphabet (https://www.rfc-editor.org/rfc/rfc4648#section-7)
- * @param b32 
+ * @param b32
  */
 export function isBase32(b32: string): boolean {
   let includesBadChar = false;
