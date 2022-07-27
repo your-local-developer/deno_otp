@@ -27,6 +27,7 @@ export class Hotp extends Otp {
 
   /**
    * Generates the formatted Otp code and increments the internal counter.
+   * Attention it only causes side effects if no moving factor is provided.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
    * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
    * @param movingFactor
@@ -41,6 +42,7 @@ export class Hotp extends Otp {
 
   /**
    * Validates the formatted otp code, ignoring spaces and increments the internal counter.
+   * Attention it only causes side effects if no moving factor is provided.
    * @param code
    * @param movingFactor
    */
