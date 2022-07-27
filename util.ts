@@ -2,6 +2,7 @@ import { OtpAlgorithm } from "./otp.ts";
 
 /**
  * Converts a 64 bit number to a Uint8Array representing its bytes.
+ * Standard length is 8 bytes.
  *
  * @param value Number to convert
  * @param byteArrayLen Length of the Uint8Array or false if the Uint8Array should only be of minimal length.
@@ -54,6 +55,7 @@ export function codeToNumber(code: string | number): number {
   return parseInt(unifiedCode);
 }
 
+// TODO: Make it comply with the deno style guide
 /**
  * Calculates the HMAC digest based on the moving factor.
  *
@@ -105,6 +107,7 @@ export function extractCodeFromHmacShaDigest(
   return shortCode;
 }
 
+// TODO: Rename to cleanUserInputFormatAndAddBase32Padding
 /**
  * Adds padding and removes whitespace from the given Base32 secret and turns its characters to uppercase to prepare it for decoding.
  * @param secret
@@ -128,4 +131,34 @@ export function trimWhitespaceAndAddBase32Padding(secret: string): string {
  */
 export function cleanUserInputFormat(input: string): string {
   return input.replaceAll(" ", "").toUpperCase();
+}
+
+/**
+ * Check the string to only be Base32 alphabet not the "Extended Hex" Base 32 Alphabet (https://www.rfc-editor.org/rfc/rfc4648#section-7)
+ * @param b32 
+ */
+export function isBase32(b32: string): boolean {
+  let includesBadChar = false;
+  for (const char of b32) {
+    const charCode = char.charCodeAt(0);
+    // Check if char is not in the Base32 alphabet
+    if (
+      // Invert the truth check
+      !(
+        // Check if charCode is not NaN
+        !isNaN(charCode) && (
+          // Is in range 2 to 7
+          charCode >= 50 && charCode <= 55 ||
+          // Is =
+          charCode === 61 ||
+          // Is in range A to Z
+          charCode >= 65 && charCode <= 90
+        )
+      )
+    ) {
+      includesBadChar = true;
+      break;
+    }
+  }
+  return !includesBadChar;
 }
