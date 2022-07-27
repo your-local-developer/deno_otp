@@ -3,9 +3,11 @@ import {
   calculateHmacDigest,
   cleanUserInputFormat,
   extractCodeFromHmacShaDigest,
+  isBase32,
   trimWhitespaceAndAddBase32Padding,
 } from "./util.ts";
 
+/** The values have to follow the naming convention of the WebCrypto API. */
 export enum OtpAlgorithm {
   SHA1 = "SHA-1",
   SHA256 = "SHA-256",
@@ -69,51 +71,7 @@ export abstract class Otp {
     try {
       const paddedSecret = trimWhitespaceAndAddBase32Padding(secret);
       if (decode(paddedSecret).length !== 0) {
-        // Check for Base32 alphabet to exclude the "Extended Hex" Base 32 Alphabet (https://www.rfc-editor.org/rfc/rfc4648#section-7)
-        let includesBadChar = false;
-        for (const char of paddedSecret) {
-          // TODO: Think of a cleaner way to do this
-          switch (char) {
-            case "A":
-            case "B":
-            case "C":
-            case "D":
-            case "E":
-            case "F":
-            case "G":
-            case "H":
-            case "I":
-            case "J":
-            case "K":
-            case "L":
-            case "M":
-            case "N":
-            case "O":
-            case "P":
-            case "Q":
-            case "R":
-            case "S":
-            case "T":
-            case "U":
-            case "V":
-            case "W":
-            case "X":
-            case "Y":
-            case "Z":
-            case "2":
-            case "3":
-            case "4":
-            case "5":
-            case "6":
-            case "7":
-            case "=":
-              break;
-            default:
-              includesBadChar = true;
-              break;
-          }
-        }
-        validated = !includesBadChar;
+        validated = isBase32(paddedSecret);
         // Deal with secrets which are too short if secret is okay.
         if (validated && !ignoreLength) {
           const len = byteLength(paddedSecret);
@@ -126,7 +84,8 @@ export abstract class Otp {
   }
 
   /**
-   * Generates the formatted otp code and possibly causes side effects like incrementing a internal counter.
+   * Generates the formatted otp code and causes side effects like incrementing a internal counter if no moving factor is provided.
+   * Attention it only causes side effects if no moving factor is provided.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
    * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
    * @param movingFactor
@@ -155,7 +114,8 @@ export abstract class Otp {
   }
 
   /**
-   * Validates the formatted otp code, ignoring spaces and possibly causes side effects like incrementing a internal counter.
+   * Validates the formatted otp code, ignoring spaces and causes side effects like incrementing a internal counter if no moving factor is provided.
+   * Attention it only causes side effects if no moving factor is provided.
    * @param movingFactor
    */
   abstract validate(
@@ -177,14 +137,15 @@ export abstract class Otp {
 
   /**
    * Groups the digits of the code in groups of three if the amount of digits is dividable by three and groups of four if not.
+   * Prepends zeros if the amount of digits is less than the digits parameter.
    * @param code
-   * @param digits
+   * @param minimumDigits
    */
-  static formatCode(code: number, digits: number): string {
+  static formatCode(code: number, minimumDigits: number): string {
     const formattedCharArray = [...code.toString()];
-    const delta = digits - formattedCharArray.length;
+    const deltaDigits = minimumDigits - formattedCharArray.length;
     const zeroFilledArray = [
-      ..."0".repeat(delta >= 0 ? delta : 0),
+      ..."0".repeat(deltaDigits > 0 ? deltaDigits : 0),
       ...formattedCharArray,
     ];
     const grouping = zeroFilledArray.length % 3 === 0 ? 3 : 4;

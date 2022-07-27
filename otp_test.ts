@@ -5,6 +5,10 @@ const goodButShortBase32Secret = "JBQWY3DPEBLWK3DU"; // 80 bit
 const goodAndLongBase32SecretNoPadding = "GEZDGNBVGY3TQMJSGM2DKNRXHA"; // 128 bit
 const goodAndLongBase32Secret = `${goodAndLongBase32SecretNoPadding}======`; // 128 bit
 const badAndShortBase32Secret = "0123456Z0123456Z"; // 80 bit
+const goodBase32AlphabetWithWhiteSpace =
+  "ABC DEF GHI JKL MNO PQR STU VWX YZ2 345 67";
+const badBase32Alphabet =
+  "ABC DEF GHI JKL MNO PQR STU VWX YZ/ <>@ 0[8 912 345 67";
 
 Deno.test({
   name: "Otp.validateSecret accepts good but too short secrets",
@@ -53,6 +57,18 @@ Deno.test({
         false,
       ),
     );
+  },
+});
+
+Deno.test({
+  name: "Otp.validateSecret only accepts the base32 alphabet",
+  fn() {
+    assert(Otp.validateSecret(goodBase32AlphabetWithWhiteSpace));
+    assert(
+      Otp.validateSecret(goodBase32AlphabetWithWhiteSpace.toLocaleLowerCase()),
+    );
+    assertFalse(Otp.validateSecret(badBase32Alphabet));
+    assertFalse(Otp.validateSecret(badBase32Alphabet.toLocaleLowerCase()));
   },
 });
 
