@@ -1,5 +1,7 @@
+import { byteLength } from "./deps.ts";
 import { Otp } from "./otp.ts";
-import { assert, assertEquals, assertFalse } from "./test_deps.ts";
+import { assert, assertEquals, assertFalse, assertThrows } from "./test_deps.ts";
+import { isBase32 } from "./util.ts";
 
 const goodButShortBase32Secret = "JBQWY3DPEBLWK3DU"; // 80 bit
 const goodAndLongBase32SecretNoPadding = "GEZDGNBVGY3TQMJSGM2DKNRXHA"; // 128 bit
@@ -81,5 +83,18 @@ Deno.test({
     assertEquals(Otp.formatCode(1234567, 7), "1234 567");
     // Ignores digit requirement if the code is longer
     assertEquals(Otp.formatCode(1234567, 6), "1234 567");
+  },
+});
+
+Deno.test({
+  name:
+    "Otp.generateSecret and generateBase32Secret generate a secret of the correct length",
+  fn() {
+    assertEquals(Otp.generateSecret().length, 20);
+    assertEquals(Otp.generateSecret({byteLength: 16}).length, 16);
+    assertEquals(byteLength(Otp.generateBase32Secret({byteLength: 16})), 16);
+    assert(isBase32(Otp.generateBase32Secret()));
+    assertThrows(() => Otp.generateSecret({byteLength: 3}));
+    assertEquals(byteLength(Otp.generateBase32Secret({byteLength: 3, allowShortSecret: true})), 3);
   },
 });

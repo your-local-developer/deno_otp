@@ -1,4 +1,4 @@
-import { byteLength, decode } from "./deps.ts";
+import { byteLength, decode, encode } from "./deps.ts";
 import {
   calculateHmacDigest,
   cleanUserInputFormat,
@@ -12,6 +12,11 @@ export enum OtpAlgorithm {
   SHA1 = "SHA-1",
   SHA256 = "SHA-256",
   SHA512 = "SHA-512",
+}
+
+export interface GenerateSecretOptions {
+  byteLength?: number;
+  allowShortSecret?: boolean;
 }
 
 export interface OtpOptions {
@@ -153,5 +158,40 @@ export abstract class Otp {
     return zeroFilledArray.map((v, i, a) =>
       v = (i !== (a.length - 1) && (i + 1) % grouping === 0) ? `${v} ` : v
     ).join("");
+  }
+
+  /**
+   * Generates a 20 byte random secret with the given length using the secure WebCryptoApi.
+   * The secret should be at least 16 bytes long but per [HOTP RFC](https://www.rfc-editor.org/rfc/rfc4226#section-4) the recommended length is at least 20 bytes.
+   * @param options
+   * @throws RangeError if the optional length is less than 16 bytes and allowedShortSecret is not set to true.
+   */
+  static generateSecret(options?: GenerateSecretOptions): Uint8Array {
+    const notOptionalOptions = {
+      ...options,
+    };
+    if (notOptionalOptions.byteLength === undefined) {
+      notOptionalOptions.byteLength = 20;
+    }
+    if (notOptionalOptions.allowShortSecret === undefined) {
+      notOptionalOptions.allowShortSecret = false;
+    }
+    if (notOptionalOptions.byteLength < 16 && !options?.allowShortSecret) {
+      throw new RangeError("Secret must be at least 16 bytes long.");
+    } else {
+      return crypto.getRandomValues(
+        new Uint8Array(notOptionalOptions.byteLength),
+      );
+    }
+  }
+
+  /**
+   * Generates a 20 byte random Base32 encoded secret with the given length using the secure WebCryptoApi.
+   * The secret should be at least 16 bytes long but per [HOTP RFC](https://www.rfc-editor.org/rfc/rfc4226#section-4) the recommended length is at least 20 bytes.
+   * @param options
+   * @throws RangeError if options.length is less than 16 bytes and options.allowedShortSecret is not set to true.
+   */
+  static generateBase32Secret(options?: GenerateSecretOptions): string {
+    return encode(Otp.generateSecret(options));
   }
 }
