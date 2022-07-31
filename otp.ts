@@ -19,6 +19,10 @@ export interface GenerateSecretOptions {
   allowShortSecret?: boolean;
 }
 
+export interface FormatCodeOptions {
+  grouping?: number;
+}
+
 export interface OtpOptions {
   digits?: number;
   validationWindow?: number;
@@ -97,6 +101,7 @@ export abstract class Otp {
    */
   abstract generate(movingFactor?: number): Promise<string>;
 
+  // TODO: make formatting optional
   /**
    * Generates the formatted otp code.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
@@ -146,14 +151,22 @@ export abstract class Otp {
    * @param code
    * @param minimumDigits
    */
-  static formatCode(code: number, minimumDigits: number): string {
+  static formatCode(
+    code: number | string,
+    minimumDigits: number,
+    options?: FormatCodeOptions,
+  ): string {
     const formattedCharArray = [...code.toString()];
     const deltaDigits = minimumDigits - formattedCharArray.length;
     const zeroFilledArray = [
       ..."0".repeat(deltaDigits > 0 ? deltaDigits : 0),
       ...formattedCharArray,
     ];
-    const grouping = zeroFilledArray.length % 3 === 0 ? 3 : 4;
+    const grouping = options?.grouping !== undefined
+      ? options.grouping
+      : zeroFilledArray.length % 3 === 0
+      ? 3
+      : 4;
     // skip index 0 and last char
     return zeroFilledArray.map((v, i, a) =>
       v = (i !== (a.length - 1) && (i + 1) % grouping === 0) ? `${v} ` : v
