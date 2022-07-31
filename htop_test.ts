@@ -3,35 +3,16 @@ import { Hotp } from "./hotp.ts";
 import { encode } from "./deps.ts";
 
 Deno.test({
-  name: "Can be constructed with Uint8Array and string",
+  name: "Can be constructed with Uint8Array and base32 string",
   async fn(): Promise<void> {
+    const secretAsArray = (new TextEncoder()).encode("12345678901234567890");
+    const secretAsBase32 = encode(secretAsArray);
     const hotp: Hotp = new Hotp(
-      Uint8Array.from([
-        49,
-        50,
-        51,
-        52,
-        53,
-        54,
-        55,
-        56,
-        57,
-        48,
-        49,
-        50,
-        51,
-        52,
-        53,
-        54,
-        55,
-        56,
-        57,
-        48,
-      ]),
+      secretAsArray,
     );
     assertEquals(await hotp.generate(0), "755 224");
     assertEquals(
-      await (new Hotp((new TextEncoder()).encode("12345678901234567890")))
+      await (new Hotp(secretAsBase32))
         .generate(0),
       "755 224",
     );
