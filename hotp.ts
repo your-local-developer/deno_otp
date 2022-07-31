@@ -15,6 +15,7 @@ export class Hotp extends Otp {
     const defaultOptions: OtpOptions = {
       algorithm: OtpAlgorithm.SHA1,
       digits: 6,
+      // TODO: Change validation window to 10 and check other libraries to make sure
       validationWindow: 30,
     };
     const normalizedOptions: OtpOptions = {
@@ -50,6 +51,7 @@ export class Hotp extends Otp {
     code: string,
     movingFactor?: number | undefined,
   ): Promise<boolean> {
+    // TODO: Add validation window check
     const codeIsValid = await this.validateCodeNoSideEffects(
       code,
       movingFactor ?? this.#counter,
