@@ -8,76 +8,81 @@ import {
 } from "./test_deps.ts";
 import { isBase32 } from "./util.ts";
 
-const goodButShortBase32Secret = "JBQWY3DPEBLWK3DU"; // 80 bit
-const goodAndLongBase32SecretNoPadding = "GEZDGNBVGY3TQMJSGM2DKNRXHA"; // 128 bit
-const goodAndLongBase32Secret = `${goodAndLongBase32SecretNoPadding}======`; // 128 bit
-const badAndShortBase32Secret = "0123456Z0123456Z"; // 80 bit
-const goodBase32AlphabetWithWhiteSpace =
-  "ABC DEF GHI JKL MNO PQR STU VWX YZ2 345 67";
-const badBase32Alphabet =
-  "ABC DEF GHI JKL MNO PQR STU VWX YZ/ <>@ 0[8 912 345 67";
+// Otp.validateSecret tests
+{
+  const goodButShortBase32Secret = "JBQWY3DPEBLWK3DU"; // 80 bit
+  const goodAndLongBase32SecretNoPadding = "GEZDGNBVGY3TQMJSGM2DKNRXHA"; // 128 bit
+  const goodAndLongBase32Secret = `${goodAndLongBase32SecretNoPadding}======`; // 128 bit
+  const badAndShortBase32Secret = "0123456Z0123456Z"; // 80 bit
+  const goodBase32AlphabetWithWhiteSpace =
+    "ABC DEF GHI JKL MNO PQR STU VWX YZ2 345 67";
+  const badBase32Alphabet =
+    "ABC DEF GHI JKL MNO PQR STU VWX YZ/ <>@ 0[8 912 345 67";
 
-Deno.test({
-  name: "Otp.validateSecret accepts good but too short secrets",
-  fn() {
-    assert(Otp.validateSecret(goodButShortBase32Secret));
-  },
-});
+  Deno.test({
+    name: "Otp.validateSecret accepts good but too short secrets",
+    fn() {
+      assert(Otp.validateSecret(goodButShortBase32Secret));
+    },
+  });
 
-Deno.test({
-  name: "Otp.validateSecret accepts good and long enough secret",
-  fn() {
-    assert(Otp.validateSecret(goodAndLongBase32SecretNoPadding));
-    assert(Otp.validateSecret(goodAndLongBase32Secret));
-  },
-});
+  Deno.test({
+    name: "Otp.validateSecret accepts good and long enough secret",
+    fn() {
+      assert(Otp.validateSecret(goodAndLongBase32SecretNoPadding));
+      assert(Otp.validateSecret(goodAndLongBase32Secret));
+    },
+  });
 
-Deno.test({
-  name:
-    "Otp.validateSecret with ignoreLength set to false does not accept good but too short secrets",
-  fn() {
-    assertFalse(Otp.validateSecret(goodButShortBase32Secret, false));
-  },
-});
+  Deno.test({
+    name:
+      "Otp.validateSecret with ignoreLength set to false does not accept good but too short secrets",
+    fn() {
+      assertFalse(Otp.validateSecret(goodButShortBase32Secret, false));
+    },
+  });
 
-Deno.test({
-  name:
-    "Otp.validateSecret with ignoreLength set to false does accept good and long enough secrets",
-  fn() {
-    assert(Otp.validateSecret(goodAndLongBase32SecretNoPadding, false));
-    assert(Otp.validateSecret(goodAndLongBase32Secret, false));
-  },
-});
+  Deno.test({
+    name:
+      "Otp.validateSecret with ignoreLength set to false does accept good and long enough secrets",
+    fn() {
+      assert(Otp.validateSecret(goodAndLongBase32SecretNoPadding, false));
+      assert(Otp.validateSecret(goodAndLongBase32Secret, false));
+    },
+  });
 
-Deno.test({
-  name:
-    "Otp.validateSecret does not accept bad or 'Extended Hex' Base32 secrets",
-  fn() {
-    assertFalse(Otp.validateSecret(badAndShortBase32Secret));
-    assertFalse(Otp.validateSecret(badAndShortBase32Secret, false));
-    assertFalse(
-      Otp.validateSecret(badAndShortBase32Secret + badAndShortBase32Secret),
-    );
-    assertFalse(
-      Otp.validateSecret(
-        badAndShortBase32Secret + badAndShortBase32Secret,
-        false,
-      ),
-    );
-  },
-});
+  Deno.test({
+    name:
+      "Otp.validateSecret does not accept bad or 'Extended Hex' Base32 secrets",
+    fn() {
+      assertFalse(Otp.validateSecret(badAndShortBase32Secret));
+      assertFalse(Otp.validateSecret(badAndShortBase32Secret, false));
+      assertFalse(
+        Otp.validateSecret(badAndShortBase32Secret + badAndShortBase32Secret),
+      );
+      assertFalse(
+        Otp.validateSecret(
+          badAndShortBase32Secret + badAndShortBase32Secret,
+          false,
+        ),
+      );
+    },
+  });
 
-Deno.test({
-  name: "Otp.validateSecret only accepts the base32 alphabet",
-  fn() {
-    assert(Otp.validateSecret(goodBase32AlphabetWithWhiteSpace));
-    assert(
-      Otp.validateSecret(goodBase32AlphabetWithWhiteSpace.toLocaleLowerCase()),
-    );
-    assertFalse(Otp.validateSecret(badBase32Alphabet));
-    assertFalse(Otp.validateSecret(badBase32Alphabet.toLocaleLowerCase()));
-  },
-});
+  Deno.test({
+    name: "Otp.validateSecret only accepts the base32 alphabet",
+    fn() {
+      assert(Otp.validateSecret(goodBase32AlphabetWithWhiteSpace));
+      assert(
+        Otp.validateSecret(
+          goodBase32AlphabetWithWhiteSpace.toLowerCase(),
+        ),
+      );
+      assertFalse(Otp.validateSecret(badBase32Alphabet));
+      assertFalse(Otp.validateSecret(badBase32Alphabet.toLowerCase()));
+    },
+  });
+}
 
 Deno.test({
   name:
@@ -88,16 +93,25 @@ Deno.test({
     assertEquals(Otp.formatCode(1234567, 7), "1234 567");
     // Ignores digit requirement if the code is longer
     assertEquals(Otp.formatCode(1234567, 6), "1234 567");
+    assertEquals(
+      Otp.formatCode(1234567, 6, {
+        grouping: 0,
+      }),
+      "1234567",
+    );
   },
 });
 
 Deno.test({
   name:
-    "Otp.generateSecret and generateBase32Secret generate a secret of the correct length",
+    "Otp.generateSecret and Otp.generateBase32Secret generate a secret of the correct length",
   fn() {
     assertEquals(Otp.generateSecret().length, 20);
     assertEquals(Otp.generateSecret({ byteLength: 16 }).length, 16);
-    assertEquals(byteLength(Otp.generateBase32Secret({ byteLength: 16 })), 16);
+    assertEquals(
+      byteLength(Otp.generateBase32Secret({ byteLength: 16 })),
+      16,
+    );
     assert(isBase32(Otp.generateBase32Secret()));
     assertThrows(() => Otp.generateSecret({ byteLength: 3 }));
     assertEquals(
