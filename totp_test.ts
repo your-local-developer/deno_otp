@@ -1,4 +1,4 @@
-import { assertEquals } from "./test_deps.ts";
+import { assert, assertEquals, assertFalse } from "./test_deps.ts";
 import { Totp, TotpOptions } from "./totp.ts";
 import { encode } from "./deps.ts";
 import { OtpAlgorithm, OtpOptions } from "./otp.ts";
@@ -121,8 +121,91 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
         },
       );
       const code = await totp.generate();
-      assertEquals(await totp.validate(code), true);
-      assertEquals(await totp.validate(code), false);
+      assert(await totp.validate(code));
+      assertFalse(await totp.validate(code));
+    },
+  });
+
+  // Write deno test for validate() against a time window
+  Deno.test({
+    name: "validate() validates against a time window",
+    async fn(): Promise<void> {
+      // Test with validationWindow set to 1 step
+      {
+        const totp: Totp = new Totp(
+          rfcSecret,
+          {
+            digits: 8,
+          },
+        );
+        const time = 1111111109;
+        const codeAt1111111109 = await totp.generate(time);
+        assert(await totp.validate(codeAt1111111109, time));
+        assert(await totp.validate(codeAt1111111109, time + 30));
+        assertFalse(await totp.validate(codeAt1111111109, time + 31));
+        // 1111111109 is at the end of a 60 second window
+        assert(await totp.validate(codeAt1111111109, time - 59));
+        assertFalse(await totp.validate(codeAt1111111109, time - 60));
+
+        // Test code at zero against a 30 second window with step size of one.
+        const codeAt0 = await totp.generate(0);
+
+        // Window 0
+        assert(await totp.validate(codeAt0, 29));
+        assert(await totp.validate(codeAt0, 0));
+
+        // Window 1
+        assert(await totp.validate(codeAt0, 59));
+        assertFalse(await totp.validate(codeAt0, 60));
+
+        // Window -1
+        assert(await totp.validate(codeAt0, -30));
+        assertFalse(await totp.validate(codeAt0, -31));
+      }
+
+      // Test with validationWindow set to 0 steps
+      {
+        const totp: Totp = new Totp(
+          rfcSecret,
+          {
+            digits: 8,
+            validationWindow: 0,
+          },
+        );
+        const time = 59;
+        const codeAt59 = await totp.generate(time);
+        // Step is 30 seconds therefore the code is valid from 30 until 59 which is 30 time units
+        assert(await totp.validate(codeAt59, time));
+        assertFalse(await totp.validate(codeAt59, time + 1));
+        assert(await totp.validate(codeAt59, time - 29));
+        assertFalse(await totp.validate(codeAt59, time - 30));
+
+        const timeAt0 = 0;
+        const codeAt0 = await totp.generate(timeAt0);
+        // Step is 30 seconds therefore the code is valid from 0 until 29 which is 30 time units
+        assert(await totp.validate(codeAt0, 0));
+        assert(await totp.validate(codeAt0, 29));
+        assertFalse(await totp.validate(codeAt0, 30));
+        assertFalse(await totp.validate(codeAt0, -1));
+      }
+      // Test with validationWindow set to 0 steps and a step size of 10 seconds
+      {
+        const totp: Totp = new Totp(
+          rfcSecret,
+          {
+            digits: 8,
+            validationWindow: 0,
+            stepSize: 10,
+          },
+        );
+        const time = 0;
+        const codeAt0 = await totp.generate(time);
+        // Step is 30 seconds therefore the code is valid from 0 until 10 which is 30 time units
+        assert(await totp.validate(codeAt0, time));
+        assert(await totp.validate(codeAt0, time + 9));
+        assertFalse(await totp.validate(codeAt0, time + 10));
+        assertFalse(await totp.validate(codeAt0, time - 1));
+      }
     },
   });
 }

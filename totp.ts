@@ -32,6 +32,7 @@ export class Totp extends Otp {
     }
   }
 
+  // TODO: make formatting configurable and optional and side effects too
   /**
    * Generates the formatted Otp code and sets the last validated code.
    * Attention it only causes side effects if no moving factor is provided.
@@ -51,6 +52,7 @@ export class Totp extends Otp {
     return generatedCode;
   }
 
+  // TODO: make side effects optional
   /**
    * Validates the formatted otp code, ignoring spaces and increments the internal counter.
    * Attention it only causes side effects if no moving factor is provided.
@@ -61,15 +63,33 @@ export class Totp extends Otp {
     code: string,
     movingFactor?: number | undefined,
   ): Promise<boolean> {
-    // TODO: Use validation window
     const calculatedMovingFactor = calculateMovingFactor(
       this.#stepSize,
       movingFactor,
     );
-    const codeIsValid = await this.validateCodeNoSideEffects(
-      code,
-      calculatedMovingFactor,
-    );
+    let codeIsValid = false;
+    for (
+      let attempt = -this.validationWindow;
+      attempt <= this.validationWindow;
+      attempt++
+    ) {
+      const movingFactorAndAttempt = calculatedMovingFactor + attempt;
+
+      if (movingFactorAndAttempt < 0) {
+        continue;
+      }
+
+      codeIsValid = !codeIsValid
+        ? await this.validateCodeNoSideEffects(
+          code,
+          movingFactorAndAttempt,
+        )
+        : codeIsValid;
+
+      if (codeIsValid) {
+        break;
+      }
+    }
     // Ensure one time use
     if (codeIsValid) {
       // Check if the code is reused
