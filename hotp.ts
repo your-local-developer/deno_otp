@@ -15,8 +15,9 @@ export class Hotp extends Otp {
     const defaultOptions: OtpOptions = {
       algorithm: OtpAlgorithm.SHA1,
       digits: 6,
-      // TODO: Change validation window to 10 and check other libraries to make sure
-      validationWindow: 30,
+      // TODO: Find a good validation window or introduce a resync mechanism
+      // Plausible look ahead window https://www.protectimus.com/blog/hotp-algorithm/
+      validationWindow: 100,
     };
     const normalizedOptions: OtpOptions = {
       ...defaultOptions,
@@ -26,6 +27,7 @@ export class Hotp extends Otp {
     if (options?.counter !== undefined) this.#counter = options.counter;
   }
 
+  // TODO: make formatting configurable and optional and side effects too
   /**
    * Generates the formatted Otp code and increments the internal counter.
    * Attention it only causes side effects if no moving factor is provided.
@@ -41,6 +43,7 @@ export class Hotp extends Otp {
     return generatedCode;
   }
 
+  // TODO: make side effects optional.
   /**
    * Validates the formatted otp code, ignoring spaces and increments the internal counter.
    * Attention it only causes side effects if no moving factor is provided.
@@ -51,11 +54,17 @@ export class Hotp extends Otp {
     code: string,
     movingFactor?: number | undefined,
   ): Promise<boolean> {
-    // TODO: Add validation window check
-    const codeIsValid = await this.validateCodeNoSideEffects(
-      code,
-      movingFactor ?? this.#counter,
-    );
+    let codeIsValid = false;
+    const usedMovingFactor = movingFactor ?? this.#counter;
+    for (let index = 0; index <= this.validationWindow; index++) {
+      // Only reassign if code is not already valid
+      codeIsValid = !codeIsValid
+        ? await this.validateCodeNoSideEffects(
+          code,
+          usedMovingFactor + index,
+        )
+        : codeIsValid;
+    }
     if (movingFactor === undefined && codeIsValid) this.#counter++;
     return codeIsValid;
   }
