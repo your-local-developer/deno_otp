@@ -86,19 +86,23 @@ import { isBase32 } from "./util.ts";
 
 Deno.test({
   name:
-    "Otp.formatCode adds spaces and does not append whitespace to the end and start",
+    "Otp.formatCode adds spaces for the grouping and does not append whitespace to the end and start",
   fn() {
     assertEquals(Otp.formatCode(123456, 6), "123 456");
     assertEquals(Otp.formatCode(12345, 6), "012 345");
+    assertEquals(Otp.formatCode("012345", 6), "012 345");
     assertEquals(Otp.formatCode(1234567, 7), "1234 567");
-    // Ignores digit requirement if the code is longer
+    // Ignores minimum digit requirement if the code is longer
     assertEquals(Otp.formatCode(1234567, 6), "1234 567");
+    assertEquals(Otp.formatCode("1234567", 6), "1234 567");
     assertEquals(
       Otp.formatCode(1234567, 6, {
         grouping: 0,
       }),
       "1234567",
     );
+    // Reformats the code
+    assertEquals(Otp.formatCode("0012 345", 6, { grouping: 3 }), "001 234 5");
   },
 });
 

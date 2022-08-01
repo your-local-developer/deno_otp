@@ -92,6 +92,7 @@ export abstract class Otp {
     return validated;
   }
 
+  // TODO: make formatting configurable and optional and side effects too
   /**
    * Generates the formatted otp code and causes side effects like incrementing a internal counter if no moving factor is provided.
    * Attention it only causes side effects if no moving factor is provided.
@@ -101,14 +102,16 @@ export abstract class Otp {
    */
   abstract generate(movingFactor?: number): Promise<string>;
 
-  // TODO: make formatting optional
+  // TODO: make formatting configurable and optional and this method protected.
   /**
    * Generates the formatted otp code.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
    * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
    * @param movingFactor
    */
-  async generateCodeNoSideEffects(movingFactor: number): Promise<string> {
+  protected async generateCodeNoSideEffects(
+    movingFactor: number,
+  ): Promise<string> {
     const digest = await calculateHmacDigest(
       movingFactor,
       this.#secret,
@@ -123,6 +126,7 @@ export abstract class Otp {
     );
   }
 
+  // TODO: make side effects optional.
   /**
    * Validates the formatted otp code, ignoring spaces and causes side effects like incrementing a internal counter if no moving factor is provided.
    * Attention it only causes side effects if no moving factor is provided.
@@ -133,11 +137,12 @@ export abstract class Otp {
     movingFactor?: number,
   ): Promise<boolean>;
 
+  // TODO: make this method protected.
   /**
    * Validates the formatted otp code, ignoring spaces.
    * @param movingFactor
    */
-  async validateCodeNoSideEffects(
+  protected async validateCodeNoSideEffects(
     code: string,
     movingFactor: number,
   ): Promise<boolean> {
@@ -156,7 +161,7 @@ export abstract class Otp {
     minimumDigits: number,
     options?: FormatCodeOptions,
   ): string {
-    const formattedCharArray = [...code.toString()];
+    const formattedCharArray = [...cleanUserInputFormat(code.toString())];
     const deltaDigits = minimumDigits - formattedCharArray.length;
     const zeroFilledArray = [
       ..."0".repeat(deltaDigits > 0 ? deltaDigits : 0),
