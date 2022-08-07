@@ -55,7 +55,6 @@ export function codeToNumber(code: string | number): number {
   return parseInt(unifiedCode);
 }
 
-// TODO: Make it comply with the deno style guide
 /**
  * Calculates the HMAC digest based on the moving factor.
  *
@@ -107,12 +106,13 @@ export function extractCodeFromHmacShaDigest(
   return shortCode;
 }
 
-// TODO: Rename to cleanUserInputFormatAndAddBase32Padding
 /**
  * Adds padding and removes whitespace from the given Base32 secret and turns its characters to uppercase to prepare it for decoding.
  * @param secret
  */
-export function trimWhitespaceAndAddBase32Padding(secret: string): string {
+export function cleanUserInputFormatAndAddBase32Padding(
+  secret: string,
+): string {
   secret = cleanUserInputFormat(secret);
   // Base32 has to be a multiple of 8
   let amountOfMissingPadding = 8 - (secret.length % 8);

@@ -1,7 +1,7 @@
 import {
   bytesToUInt32BE,
+  cleanUserInputFormatAndAddBase32Padding,
   numberToBytes,
-  trimWhitespaceAndAddBase32Padding,
 } from "./util.ts";
 import { assertEquals } from "./test_deps.ts";
 
@@ -61,7 +61,7 @@ Deno.test({
   fn(): void {
     const falselyEncodedSecret =
       "GEZ DGN bvg Y3T QOJ QGE ZDG NBV GY3 TQO JQG EZDG";
-    const treatedSecret = trimWhitespaceAndAddBase32Padding(
+    const treatedSecret = cleanUserInputFormatAndAddBase32Padding(
       falselyEncodedSecret,
     );
     assertEquals(
@@ -71,7 +71,7 @@ Deno.test({
 
     const correctlyEncodedSecret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBV";
     assertEquals(
-      trimWhitespaceAndAddBase32Padding(correctlyEncodedSecret),
+      cleanUserInputFormatAndAddBase32Padding(correctlyEncodedSecret),
       correctlyEncodedSecret,
     );
   },
@@ -82,7 +82,7 @@ Deno.test({
   fn(): void {
     const falselyEncodedSecret =
       "GEZ DGN bvg Y3T QOJ QGE ZDG NBV GY3 TQO JQG EZDG ===";
-    const treatedSecret = trimWhitespaceAndAddBase32Padding(
+    const treatedSecret = cleanUserInputFormatAndAddBase32Padding(
       falselyEncodedSecret,
     );
     assertEquals(
