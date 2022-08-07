@@ -13,6 +13,9 @@ export class Totp extends Otp {
   }
 
   #lastValidatedCode?: string;
+  public get lastValidatedCode(): string | undefined {
+    return this.#lastValidatedCode;
+  }
 
   constructor(secret: Uint8Array | string, options?: TotpOptions & OtpOptions) {
     const defaultOptions: OtpOptions = {
