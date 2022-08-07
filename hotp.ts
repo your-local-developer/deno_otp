@@ -1,4 +1,4 @@
-import { Otp, OtpAlgorithm } from "./otp.ts";
+import { GenerateOptions, Otp, OtpAlgorithm, ValidateOptions } from "./otp.ts";
 import type { OtpOptions } from "./otp.ts";
 
 export interface HotpOptions {
@@ -31,45 +31,44 @@ export class Hotp extends Otp {
     if (options?.counter !== undefined) this.#counter = options.counter;
   }
 
-  // TODO: make formatting configurable and optional and side effects too
   /**
-   * Generates the formatted Otp code and increments the internal counter.
-   * Attention it only causes side effects if no moving factor is provided.
+   * Generates the formatted Otp code and increments the internal counter if if options.sideEffects is set to true (default).
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
-   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
-   * @param movingFactor
+   * Setting a custom grouping or disabling the formatting is possible.
+   * this.validate should be used to validate otp codes.
+   * @param options
    */
-  async generate(movingFactor?: number | undefined): Promise<string> {
+  async generate(options?: GenerateOptions): Promise<string> {
     const generatedCode = await this.generateCodeNoSideEffects(
-      movingFactor ?? this.#counter,
+      options?.movingFactor ?? this.#counter,
+      options?.formatCode ?? true,
+      {
+        grouping: options?.grouping,
+      },
     );
-    if (movingFactor === undefined) this.#counter++;
+    if (options?.sideEffects ?? true) this.#counter++;
     return generatedCode;
   }
 
-  // TODO: make side effects optional.
   /**
-   * Validates the formatted otp code, ignoring spaces and increments the internal counter.
-   * Attention it only causes side effects if no moving factor is provided.
+   * Validates the formatted otp code against a look ahead window, ignoring spaces and increments the internal counter if options.sideEffects is set to true (default).
    * @param code
-   * @param movingFactor
+   * @param options
    */
-  async validate(
-    code: string,
-    movingFactor?: number | undefined,
-  ): Promise<boolean> {
+  async validate(code: string, options?: ValidateOptions): Promise<boolean> {
     let codeIsValid = false;
-    const usedMovingFactor = movingFactor ?? this.#counter;
-    for (let index = 0; index <= this.validationWindow; index++) {
+    const usedMovingFactor = options?.movingFactor ?? this.#counter;
+    // Set upper bound to zero to make the for loop run one time only
+    const upperBound = options?.validateAgainstWindow ?? true
+      ? this.validationWindow
+      : 0;
+    for (let index = 0; index <= upperBound; index++) {
       // Only reassign if code is not already valid
       codeIsValid = !codeIsValid
-        ? await this.validateCodeNoSideEffects(
-          code,
-          usedMovingFactor + index,
-        )
+        ? await this.validateCodeNoSideEffects(code, usedMovingFactor + index)
         : codeIsValid;
     }
-    if (movingFactor === undefined && codeIsValid) this.#counter++;
+    if ((options?.sideEffects ?? true) && codeIsValid) this.#counter++;
     return codeIsValid;
   }
 }

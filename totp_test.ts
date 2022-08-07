@@ -1,12 +1,12 @@
-import { assert, assertEquals, assertFalse } from "./test_deps.ts";
-import { Totp, TotpOptions } from "./totp.ts";
 import { encode } from "./deps.ts";
 import { OtpAlgorithm, OtpOptions } from "./otp.ts";
+import { assert, assertEquals, assertFalse } from "./test_deps.ts";
+import { Totp, TotpOptions } from "./totp.ts";
 
 // RFC6238 test vectors and tests
 {
-  const rfcSecret = new TextEncoder().encode("12345678901234567890");
-  const rfcBase32Secret = encode(rfcSecret);
+  const rfcSha1Secret = new TextEncoder().encode("12345678901234567890");
+  const rfcSha1Base32Secret = encode(rfcSha1Secret);
 
   const rfcSha256Secret = new TextEncoder().encode(
     "12345678901234567890123456789012",
@@ -55,17 +55,25 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
     name: "Can be constructed with Uint8Array and string",
     async fn(): Promise<void> {
       const totp = new Totp(
-        rfcSecret,
+        rfcSha1Secret,
         {
           digits: 8,
         },
       );
-      assertEquals((await totp.generate(59)).replaceAll(" ", ""), "94287082");
       assertEquals(
-        (await (new Totp(rfcBase32Secret, {
+        (await totp.generate({ sideEffects: false, movingFactor: 59 }))
+          .replaceAll(" ", ""),
+        "94287082",
+      );
+      assertEquals(
+        await (new Totp(rfcSha1Base32Secret, {
           digits: 8,
           algorithm: OtpAlgorithm.SHA1,
-        })).generate(59)).replaceAll(" ", ""),
+        })).generate({
+          sideEffects: false,
+          movingFactor: 59,
+          formatCode: false,
+        }),
         "94287082",
       );
     },
@@ -80,11 +88,11 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
       for (let index = 0; index < rfcSeconds.length; index++) {
         const seconds = rfcSeconds[index];
         assertEquals(
-          await (new Totp(rfcSecret, {
+          await (new Totp(rfcSha1Secret, {
             ...rfcOptions,
             algorithm: OtpAlgorithm.SHA1,
           })).generate(
-            seconds,
+            { movingFactor: seconds, sideEffects: false },
           ),
           rfcSha1Codes[index],
         );
@@ -93,7 +101,7 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
             digits: 8,
             algorithm: OtpAlgorithm.SHA256,
           })).generate(
-            seconds,
+            { movingFactor: seconds, sideEffects: false },
           ),
           rfcSha256Codes[index],
         );
@@ -102,7 +110,7 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
             digits: 8,
             algorithm: OtpAlgorithm.SHA512,
           })).generate(
-            seconds,
+            { movingFactor: seconds, sideEffects: false },
           ),
           rfcSha512Codes[index],
         );
@@ -115,7 +123,7 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
     name: "validate() insures one time use",
     async fn(): Promise<void> {
       const totp: Totp = new Totp(
-        rfcSecret,
+        rfcSha1Secret,
         {
           digits: 8,
         },
@@ -133,65 +141,192 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
       // Test with validationWindow set to 1 step
       {
         const totp: Totp = new Totp(
-          rfcSecret,
+          rfcSha1Secret,
           {
             digits: 8,
           },
         );
         const time = 1111111109;
-        const codeAt1111111109 = await totp.generate(time);
-        assert(await totp.validate(codeAt1111111109, time));
-        assert(await totp.validate(codeAt1111111109, time + 30));
-        assertFalse(await totp.validate(codeAt1111111109, time + 31));
+        const codeAt1111111109 = await totp.generate({
+          movingFactor: time,
+          sideEffects: false,
+        });
+        assert(
+          await totp.validate(codeAt1111111109, {
+            movingFactor: time,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt1111111109, {
+            movingFactor: time + 30,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt1111111109, {
+            movingFactor: time + 31,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
         // 1111111109 is at the end of a 60 second window
-        assert(await totp.validate(codeAt1111111109, time - 59));
-        assertFalse(await totp.validate(codeAt1111111109, time - 60));
+        assert(
+          await totp.validate(codeAt1111111109, {
+            movingFactor: time - 59,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt1111111109, {
+            movingFactor: time - 60,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
 
         // Test code at zero against a 30 second window with step size of one.
-        const codeAt0 = await totp.generate(0);
+        const codeAt0 = await totp.generate({
+          movingFactor: 0,
+          sideEffects: false,
+        });
 
         // Window 0
-        assert(await totp.validate(codeAt0, 29));
-        assert(await totp.validate(codeAt0, 0));
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: 29,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: 0,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
 
         // Window 1
-        assert(await totp.validate(codeAt0, 59));
-        assertFalse(await totp.validate(codeAt0, 60));
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: 59,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: 60,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
 
         // Window -1
-        assert(await totp.validate(codeAt0, -30));
-        assertFalse(await totp.validate(codeAt0, -31));
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: -30,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: -31,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
       }
 
       // Test with validationWindow set to 0 steps
       {
         const totp: Totp = new Totp(
-          rfcSecret,
+          rfcSha1Secret,
           {
             digits: 8,
             validationWindow: 0,
           },
         );
         const time = 59;
-        const codeAt59 = await totp.generate(time);
+        const codeAt59 = await totp.generate({
+          movingFactor: time,
+          sideEffects: false,
+        });
         // Step is 30 seconds therefore the code is valid from 30 until 59 which is 30 time units
-        assert(await totp.validate(codeAt59, time));
-        assertFalse(await totp.validate(codeAt59, time + 1));
-        assert(await totp.validate(codeAt59, time - 29));
-        assertFalse(await totp.validate(codeAt59, time - 30));
+        assert(
+          await totp.validate(codeAt59, {
+            movingFactor: time,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt59, {
+            movingFactor: time + 1,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt59, {
+            movingFactor: time - 29,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt59, {
+            movingFactor: time - 30,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
 
         const timeAt0 = 0;
-        const codeAt0 = await totp.generate(timeAt0);
+        const codeAt0 = await totp.generate({
+          movingFactor: timeAt0,
+          sideEffects: false,
+        });
         // Step is 30 seconds therefore the code is valid from 0 until 29 which is 30 time units
-        assert(await totp.validate(codeAt0, 0));
-        assert(await totp.validate(codeAt0, 29));
-        assertFalse(await totp.validate(codeAt0, 30));
-        assertFalse(await totp.validate(codeAt0, -1));
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: 0,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: 29,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: 30,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: -1,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
       }
       // Test with validationWindow set to 0 steps and a step size of 10 seconds
+      // Basically the same as validateAgainsWindow = false
       {
         const totp: Totp = new Totp(
-          rfcSecret,
+          rfcSha1Secret,
           {
             digits: 8,
             validationWindow: 0,
@@ -199,12 +334,53 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
           },
         );
         const time = 0;
-        const codeAt0 = await totp.generate(time);
+        const codeAt0 = await totp.generate({
+          movingFactor: time,
+          sideEffects: false,
+        });
         // Step is 30 seconds therefore the code is valid from 0 until 10 which is 30 time units
-        assert(await totp.validate(codeAt0, time));
-        assert(await totp.validate(codeAt0, time + 9));
-        assertFalse(await totp.validate(codeAt0, time + 10));
-        assertFalse(await totp.validate(codeAt0, time - 1));
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: time,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: time,
+            sideEffects: false,
+            validateAgainstWindow: false,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: time + 9,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assert(
+          await totp.validate(codeAt0, {
+            movingFactor: time + 9,
+            sideEffects: false,
+            validateAgainstWindow: false,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: time + 10,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
+        assertFalse(
+          await totp.validate(codeAt0, {
+            movingFactor: time - 1,
+            sideEffects: false,
+            validateAgainstWindow: true,
+          }),
+        );
       }
     },
   });
@@ -212,7 +388,7 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
   Deno.test({
     name: "secondsUntilNextWindow() calculates the time until the next window.",
     fn(): void {
-      const totp = new Totp(rfcSecret);
+      const totp = new Totp(rfcSha1Secret);
       assertEquals(Totp.secondsUntilNextWindow(30, 0), 30);
       assertEquals(Totp.secondsUntilNextWindow(30, 45), 15);
 
@@ -227,3 +403,21 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
     },
   });
 }
+
+Deno.test({
+  name: "Simulate TOTP auth flow",
+  async fn(): Promise<void> {
+    const sharedSecret = Totp.generateBase32Secret();
+    assert(Totp.validateSecret(sharedSecret));
+
+    const serverTotp = new Totp(sharedSecret);
+
+    const clientTotp = new Totp(sharedSecret);
+    const clientCode = await clientTotp.generate();
+
+    // One time use
+    assert(await serverTotp.validate(clientCode));
+    assertEquals(serverTotp.lastValidatedCode, clientCode.replaceAll(" ", ""));
+    assertFalse(await serverTotp.validate(clientCode));
+  },
+});

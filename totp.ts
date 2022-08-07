@@ -1,5 +1,6 @@
-import { Otp, OtpAlgorithm } from "./otp.ts";
 import type { OtpOptions } from "./otp.ts";
+import { GenerateOptions, Otp, OtpAlgorithm, ValidateOptions } from "./otp.ts";
+import { cleanUserInputFormat } from "./util.ts";
 
 export interface TotpOptions {
   stepSize?: number;
@@ -35,45 +36,51 @@ export class Totp extends Otp {
     }
   }
 
-  // TODO: make formatting configurable and optional and side effects too
   /**
-   * Generates the formatted Otp code and sets the last validated code.
-   * Attention it only causes side effects if no moving factor is provided.
+   * Generates the formatted Otp code.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
-   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
-   * @param movingFactor
+   * Setting a custom grouping or disabling the formatting is possible.
+   * this.validate should be used to validate otp codes.
+   * @param options
    */
-  async generate(movingFactor?: number | undefined): Promise<string> {
+  async generate(options?: GenerateOptions): Promise<string> {
+    // INFO: Side effects is not used
     const calculatedMovingFactor = calculateMovingFactor(
       this.#stepSize,
-      movingFactor,
+      options?.movingFactor,
     );
 
     const generatedCode = await this.generateCodeNoSideEffects(
       calculatedMovingFactor,
+      options?.formatCode ?? true,
+      {
+        grouping: options?.grouping,
+      },
     );
     return generatedCode;
   }
 
-  // TODO: make side effects optional
   /**
    * Validates the formatted otp code, ignoring spaces and increments the internal counter.
    * Attention it only causes side effects if no moving factor is provided.
    * @param code
-   * @param movingFactor
+   * @param options
    */
   async validate(
     code: string,
-    movingFactor?: number | undefined,
+    options?: ValidateOptions,
   ): Promise<boolean> {
     const calculatedMovingFactor = calculateMovingFactor(
       this.#stepSize,
-      movingFactor,
+      options?.movingFactor,
     );
     let codeIsValid = false;
+    const validationWindow = options?.validateAgainstWindow
+      ? this.validationWindow
+      : 0;
     for (
-      let attempt = -this.validationWindow;
-      attempt <= this.validationWindow;
+      let attempt = -validationWindow;
+      attempt <= validationWindow;
       attempt++
     ) {
       const movingFactorAndAttempt = calculatedMovingFactor + attempt;
@@ -90,20 +97,25 @@ export class Totp extends Otp {
         : codeIsValid;
 
       if (codeIsValid) {
+        // Get out of the loop
         break;
       }
     }
     // Ensure one time use
     if (codeIsValid) {
       // Check if the code is reused
-      if (this.#lastValidatedCode === code) {
+      if (
+        this.#lastValidatedCode &&
+        this.#lastValidatedCode === cleanUserInputFormat(code)
+      ) {
         return false;
       }
 
       // Set the last validated code to the generated code, so it is not reusable
-      if (movingFactor === undefined) {
+      if (options?.sideEffects ?? true) {
         this.#lastValidatedCode = await this.generateCodeNoSideEffects(
           calculatedMovingFactor,
+          false,
         );
       }
     }
