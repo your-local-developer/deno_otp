@@ -1,2 +1,4 @@
 image:
   file: .gitpod.Dockerfile
+tasks:
+  - init: deno cache *deps.ts
