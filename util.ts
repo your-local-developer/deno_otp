@@ -56,9 +56,9 @@ export function codeToNumber(code: string | number): number {
 }
 
 export interface CalculateHmacDigestOptions {
-  movingFactor: number,
-  secret: Uint8Array,
-  algorithm: OtpAlgorithm | AlgorithmIdentifier,
+  movingFactor: number;
+  secret: Uint8Array;
+  algorithm: OtpAlgorithm | AlgorithmIdentifier;
 }
 
 /**
