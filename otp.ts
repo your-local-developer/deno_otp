@@ -2,9 +2,9 @@ import { byteLength, decode, encode } from "./deps.ts";
 import {
   calculateHmacDigest,
   cleanUserInputFormat,
+  cleanUserInputFormatAndAddBase32Padding,
   extractCodeFromHmacShaDigest,
   isBase32,
-  trimWhitespaceAndAddBase32Padding,
 } from "./util.ts";
 
 /** The values have to follow the naming convention of the WebCrypto API. */
@@ -21,6 +21,23 @@ export interface GenerateSecretOptions {
 
 export interface FormatCodeOptions {
   grouping?: number;
+}
+
+export interface GenerateOptions {
+  movingFactor?: number;
+  formatCode?: boolean;
+  grouping?: number;
+  sideEffects: boolean;
+}
+
+export interface GenerateCodeNoSideEffects {
+  grouping?: number;
+}
+
+export interface ValidateOptions {
+  movingFactor?: number;
+  sideEffects: boolean;
+  validateAgainstWindow: boolean;
 }
 
 export interface OtpOptions {
@@ -56,7 +73,7 @@ export abstract class Otp {
     options?: OtpOptions,
   ) {
     if (typeof secret === "string") {
-      secret = decode(trimWhitespaceAndAddBase32Padding(secret));
+      secret = decode(cleanUserInputFormatAndAddBase32Padding(secret));
     }
     this.#secret = secret;
     if (options?.digits !== undefined) this.#digits = options.digits;
@@ -78,7 +95,7 @@ export abstract class Otp {
   static validateSecret(secret: string, ignoreLength = true): boolean {
     let validated = false;
     try {
-      const paddedSecret = trimWhitespaceAndAddBase32Padding(secret);
+      const paddedSecret = cleanUserInputFormatAndAddBase32Padding(secret);
       if (decode(paddedSecret).length !== 0) {
         validated = isBase32(paddedSecret);
         // Deal with secrets which are too short if secret is okay.
@@ -92,17 +109,15 @@ export abstract class Otp {
     return validated;
   }
 
-  // TODO: make formatting configurable and optional and side effects too
   /**
-   * Generates the formatted otp code and causes side effects like incrementing a internal counter if no moving factor is provided.
-   * Attention it only causes side effects if no moving factor is provided.
+   * Generates the formatted otp code and causes side effects like incrementing a internal counter if options.sideEffects is set to true (default).
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
-   * this.validate or this.validateCodeNoSideEffects should be used validate otp codes.
-   * @param movingFactor
+   * Setting a custom grouping or disabling the formatting is possible.
+   * this.validate should be used to validate otp codes.
+   * @param options
    */
-  abstract generate(movingFactor?: number): Promise<string>;
+  abstract generate(options?: GenerateOptions): Promise<string>;
 
-  // TODO: make formatting configurable and optional and this method protected.
   /**
    * Generates the formatted otp code.
    * The code is formatted in a grouping of three digits followed by a space if the amount of digits is dividable by three and a grouping of four otherwise.
@@ -111,33 +126,37 @@ export abstract class Otp {
    */
   protected async generateCodeNoSideEffects(
     movingFactor: number,
+    formatCode: boolean,
+    options?: GenerateCodeNoSideEffects,
   ): Promise<string> {
-    const digest = await calculateHmacDigest(
-      movingFactor,
-      this.#secret,
-      this.#algorithm,
-    );
-    return Otp.formatCode(
-      extractCodeFromHmacShaDigest(
-        digest,
-        this.#digits,
+    const extractedCode = extractCodeFromHmacShaDigest(
+      await calculateHmacDigest(
+        movingFactor,
+        this.#secret,
+        this.#algorithm,
       ),
       this.#digits,
     );
+    let grouping = options?.grouping;
+    if (!formatCode) grouping = 0;
+    return Otp.formatCode(
+      extractedCode,
+      this.#digits,
+      {
+        grouping,
+      },
+    );
   }
 
-  // TODO: make side effects optional.
   /**
-   * Validates the formatted otp code, ignoring spaces and causes side effects like incrementing a internal counter if no moving factor is provided.
-   * Attention it only causes side effects if no moving factor is provided.
-   * @param movingFactor
+   * Validates the formatted otp code, ignoring spaces and causes side effects like incrementing a internal counter if options.sideEffects is set to true (default).
+   * @param options
    */
   abstract validate(
     code: string,
-    movingFactor?: number,
+    options?: ValidateOptions,
   ): Promise<boolean>;
 
-  // TODO: make this method protected.
   /**
    * Validates the formatted otp code, ignoring spaces.
    * @param movingFactor
@@ -147,7 +166,9 @@ export abstract class Otp {
     movingFactor: number,
   ): Promise<boolean> {
     return cleanUserInputFormat(code) ===
-      cleanUserInputFormat(await this.generateCodeNoSideEffects(movingFactor));
+      cleanUserInputFormat(
+        await this.generateCodeNoSideEffects(movingFactor, false),
+      );
   }
 
   /**
@@ -161,7 +182,9 @@ export abstract class Otp {
     minimumDigits: number,
     options?: FormatCodeOptions,
   ): string {
-    const formattedCharArray = [...cleanUserInputFormat(code.toString())];
+    const formattedCharArray = [
+      ...cleanUserInputFormat(code.toString()),
+    ];
     const deltaDigits = minimumDigits - formattedCharArray.length;
     const zeroFilledArray = [
       ..."0".repeat(deltaDigits > 0 ? deltaDigits : 0),
