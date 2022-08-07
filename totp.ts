@@ -121,6 +121,8 @@ export class Totp extends Otp {
 
 function calculateMovingFactor(stepSize: number, seconds?: number): number {
   // Calculate moving factor and convert ms to seconds
-  seconds = seconds !== undefined ? seconds : Math.floor(Date.now() / 1000);
+  seconds = seconds !== undefined
+    ? Math.floor(seconds)
+    : Math.floor(Date.now() / 1000);
   return Math.floor(seconds / stepSize);
 }
