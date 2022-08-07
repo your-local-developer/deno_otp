@@ -106,6 +106,17 @@ export class Totp extends Otp {
     }
     return codeIsValid;
   }
+
+  secondsUntilNextWindow(seconds?: number): number {
+    return Totp.secondsUntilNextWindow(this.#stepSize, seconds);
+  }
+
+  static secondsUntilNextWindow(stepSize: number, seconds?: number): number {
+    return stepSize -
+      Math.floor(
+          seconds ?? (Date.now() / 1000),
+        ) % stepSize;
+  }
 }
 
 function calculateMovingFactor(stepSize: number, seconds?: number): number {

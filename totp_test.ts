@@ -208,4 +208,22 @@ import { OtpAlgorithm, OtpOptions } from "./otp.ts";
       }
     },
   });
+
+  Deno.test({
+    name: "secondsUntilNextWindow() calculates the time until the next window.",
+    fn(): void {
+      const totp = new Totp(rfcSecret);
+      assertEquals(Totp.secondsUntilNextWindow(30, 0), 30);
+      assertEquals(Totp.secondsUntilNextWindow(30, 45), 15);
+
+      assertEquals(totp.secondsUntilNextWindow(0), 30);
+      assertEquals(totp.secondsUntilNextWindow(29), 1);
+      assertEquals(totp.secondsUntilNextWindow(30), 30);
+
+      assertEquals(
+        totp.secondsUntilNextWindow(),
+        30 - Math.round(Math.floor(Date.now() / 1000) % 30),
+      );
+    },
+  });
 }
