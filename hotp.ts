@@ -11,6 +11,10 @@ export class Hotp extends Otp {
     return this.#counter;
   }
 
+  public resetCounter(counter = 0) {
+    this.#counter = counter;
+  }
+
   constructor(secret: Uint8Array | string, options?: HotpOptions & OtpOptions) {
     const defaultOptions: OtpOptions = {
       algorithm: OtpAlgorithm.SHA1,
