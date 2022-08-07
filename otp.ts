@@ -130,11 +130,11 @@ export abstract class Otp {
     options?: GenerateCodeNoSideEffects,
   ): Promise<string> {
     const extractedCode = extractCodeFromHmacShaDigest(
-      await calculateHmacDigest(
+      await calculateHmacDigest({
         movingFactor,
-        this.#secret,
-        this.#algorithm,
-      ),
+        secret: this.#secret,
+        algorithm: this.#algorithm,
+      }),
       this.#digits,
     );
     let grouping = options?.grouping;

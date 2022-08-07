@@ -55,27 +55,29 @@ export function codeToNumber(code: string | number): number {
   return parseInt(unifiedCode);
 }
 
-/**
- * Calculates the HMAC digest based on the moving factor.
- *
- * @param movingFactor Moving factor to sign
- * @param secret Secret which is used as key
- * @param algorithm Algorithm used for signing
- * @throws Errors if the movingFactor exceeds 64 bit
- */
-export async function calculateHmacDigest(
+export interface CalculateHmacDigestOptions {
   movingFactor: number,
   secret: Uint8Array,
   algorithm: OtpAlgorithm | AlgorithmIdentifier,
+}
+
+/**
+ * Calculates the HMAC digest based on the moving factor.
+ *
+ * @param options Options for calculating the HMAC digest
+ * @throws Errors if the movingFactor exceeds 64 bit
+ */
+export async function calculateHmacDigest(
+  options: CalculateHmacDigestOptions,
 ): Promise<Uint8Array> {
   const hmacKey = await crypto.subtle.importKey(
     "raw",
-    secret,
-    { name: "HMAC", hash: algorithm },
+    options.secret,
+    { name: "HMAC", hash: options.algorithm },
     false,
     ["sign"],
   );
-  const bytesToSign = numberToBytes(movingFactor);
+  const bytesToSign = numberToBytes(options.movingFactor);
   const signedDigest = new Uint8Array(
     await crypto.subtle.sign("HMAC", hmacKey, bytesToSign),
   );
